@@ -2,7 +2,23 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Superpowers
+
+**Always ask before using superpowers.** When the user requests a change, ask first: "Do you want me to use superpowers (brainstorm → spec → plan → subagent execution) or just implement it directly?" Do not invoke brainstorming, writing-plans, or subagent-driven-development unless the user confirms they want the full superpowers workflow.
+
 ## Git
+
+**Commit message format:** `<type>(<scope>): <subject>`
+
+Types:
+- `feat` — A new feature
+- `fix` — A bug fix
+- `docs` — Documentation only changes
+- `style` — Changes that do not affect the meaning of the code (white-space, formatting, missing semi-colons, etc)
+- `refactor` — A code change that neither fixes a bug nor adds a feature
+- `perf` — A code change that improves performance
+- `test` — Adding missing tests
+- `chore` — Changes to the build process or auxiliary tools and libraries such as documentation generation
 
 **Never commit automatically.** Always show the changes and wait for the user to review and explicitly approve before running `git commit`. Do not include `Co-Authored-By` trailers in commit messages.
 
