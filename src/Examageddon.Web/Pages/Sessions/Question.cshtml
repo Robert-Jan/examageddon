@@ -1,0 +1,65 @@
+@page "/sessions/{sessionId:int}/question/{n:int}"
+@model Examageddon.Web.Pages.Sessions.QuestionModel
+@using Examageddon.Data.Enums
+@{
+    ViewData["Title"] = $"Question {Model.SessionQuestion!.Position}";
+    var sq = Model.SessionQuestion!;
+}
+
+<div class="mb-4">
+    <div class="h-2 bg-arcade-card rounded-full overflow-hidden">
+        <div class="h-full bg-gradient-to-r from-fire to-fire-hot rounded-full transition-all"
+             style="width: @(sq.Position * 100 / sq.TotalQuestions)%"></div>
+    </div>
+</div>
+
+<div class="bg-arcade-card border border-arcade-border rounded-xl overflow-hidden mb-6">
+    <div class="px-4 py-2.5 border-b border-arcade-border flex items-center justify-between">
+        <span class="text-xs font-bold tracking-widest text-arcade-muted uppercase">Question @sq.Position / @sq.TotalQuestions</span>
+        @if (sq.FeedbackMode == FeedbackMode.AtEnd && sq.IsFromReview)
+        {
+            <a href="/sessions/@sq.SessionId/review" class="text-xs text-fire hover:underline">← Back to Review</a>
+        }
+    </div>
+    <div class="p-6">
+        <p class="text-xl font-semibold mb-4">@sq.Question.Text</p>
+        @if (sq.Question.ImageData != null)
+        {
+            <img src="/images/question/@sq.Question.Id" alt="Question image"
+                 class="rounded-lg max-h-64 object-contain mb-4 border border-arcade-border" />
+        }
+    </div>
+</div>
+
+<div id="answer-container">
+    @await Html.PartialAsync("_AnswerFeedback", sq)
+</div>
+
+@if (sq.FeedbackMode == FeedbackMode.AtEnd && !sq.IsFromReview)
+{
+    <div class="flex justify-between mt-6">
+        @if (sq.Position > 1)
+        {
+            <a href="/sessions/@sq.SessionId/question/@(sq.Position - 1)"
+               class="px-6 py-3 bg-arcade-card border border-arcade-border rounded-xl hover:border-arcade-muted transition">
+                ← Back
+            </a>
+        }
+        else { <div></div> }
+
+        @if (sq.Position < sq.TotalQuestions)
+        {
+            <a href="/sessions/@sq.SessionId/question/@(sq.Position + 1)"
+               class="px-6 py-3 bg-arcade-card border border-arcade-border rounded-xl hover:border-arcade-muted transition">
+                Next →
+            </a>
+        }
+        else
+        {
+            <a href="/sessions/@sq.SessionId/review"
+               class="px-6 py-3 bg-gradient-to-r from-fire to-fire-hot text-slate-900 font-bold rounded-xl hover:opacity-90 transition">
+                Review →
+            </a>
+        }
+    </div>
+}

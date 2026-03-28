@@ -1,0 +1,46 @@
+@page
+@model Examageddon.Web.Pages.Manage.IndexModel
+@using Examageddon.Data.Enums
+@{ ViewData["Title"] = "Manage Exams"; }
+
+<div class="flex items-center justify-between mb-8">
+    <h1 class="text-3xl font-black">Manage Exams</h1>
+    <a href="/manage/exams/0/edit" class="px-5 py-2 bg-gradient-to-r from-fire to-fire-hot text-slate-900 font-bold rounded-lg hover:opacity-90 transition">
+        + New Exam
+    </a>
+</div>
+
+@if (!Model.Exams.Any())
+{
+    <div class="bg-arcade-card border border-arcade-border rounded-xl p-8 text-center text-arcade-muted">
+        No exams yet. Create one!
+    </div>
+}
+else
+{
+    <div class="space-y-3">
+        @foreach (var exam in Model.Exams)
+        {
+            <div class="bg-arcade-card border border-arcade-border rounded-xl p-5 flex items-center justify-between">
+                <div>
+                    <p class="font-bold">@exam.Title</p>
+                    <p class="text-arcade-muted text-sm">@Model.QuestionCounts.GetValueOrDefault(exam.Id, 0) questions · Pass at @(exam.ScoringPreset == ScoringPreset.AzureCertification ? $"{exam.PassingThreshold} / 1000" : $"{exam.PassingThreshold}%")</p>
+                </div>
+                <div class="flex gap-3">
+                    <a href="/manage/exams/@exam.Id/questions" class="px-4 py-2 bg-arcade-dark border border-arcade-border rounded-lg text-sm hover:border-fire transition">
+                        Questions
+                    </a>
+                    <a href="/manage/exams/@exam.Id/edit" class="px-4 py-2 bg-arcade-dark border border-arcade-border rounded-lg text-sm hover:border-fire transition">
+                        Edit
+                    </a>
+                    <form method="post" asp-page-handler="Delete" asp-route-id="@exam.Id"
+                          onsubmit="return confirm('Delete @exam.Title?')">
+                        <button type="submit" class="px-4 py-2 bg-arcade-dark border border-red-800 rounded-lg text-sm text-red-400 hover:border-red-500 transition">
+                            Delete
+                        </button>
+                    </form>
+                </div>
+            </div>
+        }
+    </div>
+}

@@ -1,0 +1,30 @@
+@page "/sessions/gate"
+@model GateModel
+@{ ViewData["Title"] = "Active Session"; }
+
+<div class="text-center mb-6">
+    <h1 class="text-3xl font-black tracking-tight mb-2">You have an active session</h1>
+    <p class="text-arcade-muted">You were in the middle of <span class="text-arcade-text font-semibold">@Model.ExamTitle</span></p>
+</div>
+
+<div class="bg-arcade-card border border-arcade-border rounded-xl overflow-hidden max-w-md mx-auto">
+    <div class="px-4 py-2.5 border-b border-arcade-border">
+        <span class="text-xs font-bold tracking-widest text-arcade-muted uppercase">What would you like to do?</span>
+    </div>
+    <div class="p-4 flex flex-col gap-3">
+        <form method="post" asp-page-handler="Continue">
+            <input type="hidden" name="sessionId" value="@Model.SessionId" />
+            <button type="submit"
+                class="w-full py-3 bg-gradient-to-r from-fire to-fire-hot text-slate-900 font-bold rounded-xl hover:opacity-90 transition">
+                Continue session
+            </button>
+        </form>
+        <form method="post" asp-page-handler="Abandon">
+            <input type="hidden" name="sessionId" value="@Model.SessionId" />
+            <button type="submit"
+                class="w-full py-3 bg-arcade-card border border-red-800 text-red-400 font-semibold rounded-xl hover:bg-red-950 transition">
+                Abandon session
+            </button>
+        </form>
+    </div>
+</div>

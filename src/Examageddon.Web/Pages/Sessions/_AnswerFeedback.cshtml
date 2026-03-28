@@ -1,0 +1,444 @@
+@model Examageddon.Services.Models.SessionQuestionModel
+@using Examageddon.Data.Enums
+
+@if (Model.QuestionType == QuestionType.DragAndDrop)
+{
+    @if (!Model.IsAnswered)
+    {
+        var slotOptions = Model.Question.AnswerOptions.OrderBy(a => a.OrderIndex).ToList();
+        <div id="dnd-container">
+            <!-- Pool -->
+            <div class="mb-4">
+                <p class="text-xs text-arcade-muted mb-2 uppercase tracking-wide font-bold">Drag to match</p>
+                <div id="dnd-pool" class="flex flex-wrap gap-2 min-h-10 p-3 bg-arcade-dark border border-dashed border-arcade-border rounded-xl">
+                    @foreach (var opt in Model.AnswerOptions)
+                    {
+                        var preplacedSlot = Model.DragPlacements.Values.Contains(opt.Id) ? (int?)Model.DragPlacements.FirstOrDefault(kv => kv.Value == opt.Id).Key : null;
+                        if (preplacedSlot is null)
+                        {
+                            <div class="dnd-chip cursor-grab select-none px-3 py-1 bg-arcade-card border-2 border-dashed border-fire text-fire text-sm font-semibold rounded-lg"
+                                 draggable="true"
+                                 data-option-id="@opt.Id"
+                                 data-label="@opt.MatchText">
+                                @opt.MatchText
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+
+            <!-- Slots -->
+            <div class="space-y-2">
+                @foreach (var slot in slotOptions)
+                {
+                    var preplacedId = Model.DragPlacements.TryGetValue(slot.Id, out var pid) ? pid : (int?)null;
+                    var preplacedLabel = preplacedId.HasValue
+                        ? Model.Question.AnswerOptions.FirstOrDefault(a => a.Id == preplacedId.Value)?.MatchText ?? ""
+                        : null;
+                    <div class="flex items-center gap-3">
+                        <div class="dnd-slot w-28 min-h-9 flex items-center justify-center border-2 rounded-lg flex-shrink-0 transition"
+                             data-slot-id="@slot.Id"
+                             data-placed-id="@(preplacedId?.ToString() ?? "")"
+                             ondragover="event.preventDefault()"
+                             ondrop="dndDrop(event, this)">
+                            @if (preplacedLabel is not null)
+                            {
+                                <div class="dnd-placed-chip w-full text-center px-2 py-1 text-fire text-sm font-semibold"
+                                     draggable="true"
+                                     data-option-id="@preplacedId"
+                                     data-label="@preplacedLabel">
+                                    @preplacedLabel
+                                </div>
+                            }
+                            else
+                            {
+                                <span class="text-xs text-arcade-muted">drop here</span>
+                            }
+                        </div>
+                        <span class="text-arcade-text">@slot.Text</span>
+                    </div>
+                }
+            </div>
+
+            <!-- Hidden form inputs + submit -->
+            <form id="dnd-form" class="mt-4">
+                @foreach (var slot in slotOptions)
+                {
+                    <input type="hidden" class="dnd-slot-input" data-slot-id="@slot.Id" name="slotIds" value="@slot.Id" />
+                    <input type="hidden" class="dnd-placed-input" data-slot-id="@slot.Id" name="placedIds" value="" />
+                }
+            </form>
+            <p class="text-xs text-arcade-muted mt-3 text-center">Fill all slots to submit · Drag back to pool to undo · Tap on touch</p>
+            <button id="dnd-submit" type="button" disabled
+                    hx-post="/sessions/@Model.SessionId/question/@Model.Position?handler=DragAnswer&questionId=@Model.Question.Id"
+                    hx-include="#dnd-form"
+                    hx-target="#answer-container"
+                    hx-swap="innerHTML"
+                    class="mt-2 w-full px-6 py-3 bg-gradient-to-r from-fire to-fire-hot text-slate-900 font-bold rounded-xl opacity-50 cursor-not-allowed transition">
+                Submit Answer
+            </button>
+        </div>
+
+        <script>
+        (function () {
+            var _selected = null; // touch: currently selected chip node
+
+            function getPool() { return document.getElementById('dnd-pool'); }
+
+            function updateSubmitState() {
+                var slots = document.querySelectorAll('#dnd-container .dnd-slot');
+                var allFilled = Array.from(slots).every(s => s.dataset.placedId !== '');
+                var btn = document.getElementById('dnd-submit');
+                btn.disabled = !allFilled;
+                btn.classList.toggle('opacity-50', !allFilled);
+                btn.classList.toggle('cursor-not-allowed', !allFilled);
+            }
+
+            function syncHiddenInput(slotId, placedId) {
+                var input = document.querySelector('.dnd-placed-input[data-slot-id="' + slotId + '"]');
+                if (input) input.value = placedId || '';
+            }
+
+            function placeChip(chip, slotEl) {
+                // remove existing chip from slot → back to pool
+                var existing = slotEl.querySelector('.dnd-placed-chip');
+                if (existing) returnToPool(existing);
+
+                // move chip from wherever it is into the slot
+                chip.classList.remove('dnd-chip');
+                chip.classList.add('dnd-placed-chip');
+                chip.setAttribute('draggable', 'true');
+                slotEl.innerHTML = '';
+                slotEl.appendChild(chip);
+                slotEl.dataset.placedId = chip.dataset.optionId;
+                syncHiddenInput(slotEl.dataset.slotId, chip.dataset.optionId);
+                updateSubmitState();
+            }
+
+            function returnToPool(chip) {
+                chip.classList.remove('dnd-placed-chip');
+                chip.classList.add('dnd-chip');
+                var slot = chip.closest('.dnd-slot');
+                if (slot) {
+                    slot.dataset.placedId = '';
+                    slot.innerHTML = '<span class="text-xs text-arcade-muted">drop here</span>';
+                    syncHiddenInput(slot.dataset.slotId, '');
+                }
+                getPool().appendChild(chip);
+                updateSubmitState();
+            }
+
+            // ── Drag API ──────────────────────────────────────────────
+            document.addEventListener('dragstart', function (e) {
+                var chip = e.target.closest('.dnd-chip, .dnd-placed-chip');
+                if (!chip) return;
+                e.dataTransfer.setData('text/plain', chip.dataset.optionId);
+                e.dataTransfer.effectAllowed = 'move';
+            });
+
+            window.dndDrop = function (e, slotEl) {
+                e.preventDefault();
+                var optionId = e.dataTransfer.getData('text/plain');
+                var chip = document.querySelector('[data-option-id="' + optionId + '"]');
+                if (!chip) return;
+                placeChip(chip, slotEl);
+            };
+
+            // ── Touch fallback ────────────────────────────────────────
+            document.addEventListener('touchstart', function (e) {
+                var chip = e.target.closest('.dnd-chip');
+                var placedChip = e.target.closest('.dnd-placed-chip');
+                var slot = e.target.closest('.dnd-slot');
+
+                if (chip) {
+                    // select from pool
+                    if (_selected) _selected.classList.remove('ring-2', 'ring-white');
+                    _selected = chip;
+                    chip.classList.add('ring-2', 'ring-white');
+                    e.preventDefault();
+                    return;
+                }
+
+                if (placedChip) {
+                    // return placed chip to pool
+                    if (_selected) _selected.classList.remove('ring-2', 'ring-white');
+                    _selected = null;
+                    returnToPool(placedChip);
+                    e.preventDefault();
+                    return;
+                }
+
+                if (slot && _selected) {
+                    // place selected chip in slot
+                    _selected.classList.remove('ring-2', 'ring-white');
+                    placeChip(_selected, slot);
+                    _selected = null;
+                    e.preventDefault();
+                    return;
+                }
+            }, { passive: false });
+
+            updateSubmitState();
+        })();
+        </script>
+    }
+    else
+    {
+        var showDndFeedback = Model.FeedbackMode == FeedbackMode.Direct;
+        var slotOptions = Model.Question.AnswerOptions.OrderBy(a => a.OrderIndex).ToList();
+        <div class="space-y-2">
+            @foreach (var slot in slotOptions)
+            {
+                var hasPlaced = Model.DragPlacements.TryGetValue(slot.Id, out var placedId2);
+                var placedOpt2 = hasPlaced ? Model.Question.AnswerOptions.FirstOrDefault(a => a.Id == placedId2) : null;
+                var placedLabel = placedOpt2?.MatchText ?? "";
+                var isSlotCorrect = hasPlaced && placedId2 == slot.Id;
+
+                string borderClass, bgClass, textClass;
+                if (showDndFeedback)
+                {
+                    if (isSlotCorrect)
+                    { borderClass = "border-green-500"; bgClass = "bg-green-500/10"; textClass = "text-green-400"; }
+                    else
+                    { borderClass = "border-red-500"; bgClass = "bg-red-500/10"; textClass = "text-red-400"; }
+                }
+                else
+                { borderClass = "border-arcade-border"; bgClass = ""; textClass = "text-arcade-text"; }
+
+                <div class="flex items-center gap-3 border @borderClass @bgClass rounded-xl p-3">
+                    @if (showDndFeedback)
+                    {
+                        if (isSlotCorrect) { <span class="text-green-400 flex-shrink-0 w-4">✓</span> }
+                        else { <span class="text-red-400 flex-shrink-0 w-4">✗</span> }
+                    }
+                    <div class="flex flex-col gap-1 flex-shrink-0 w-24">
+                        <span class="px-2 py-0.5 border @(showDndFeedback && !isSlotCorrect ? "border-red-500 text-red-400" : "border-fire text-fire") rounded-md text-sm font-semibold text-center">
+                            @placedLabel
+                        </span>
+                        @if (showDndFeedback && !isSlotCorrect)
+                        {
+                            <span class="px-2 py-0.5 border border-green-500 text-green-400 rounded-md text-sm font-semibold text-center">
+                                @slot.MatchText ✓
+                            </span>
+                        }
+                    </div>
+                    <span class="@textClass">@slot.Text</span>
+                </div>
+            }
+        </div>
+    }
+}
+else if (Model.QuestionType == QuestionType.Statement)
+{
+    @if (!Model.IsAnswered)
+    {
+        <div class="space-y-3">
+            <form id="statement-form" class="space-y-3">
+                @foreach (var option in Model.AnswerOptions)
+                {
+                    <input type="checkbox" id="sc_@option.Id" name="answerIds" value="@option.Id" class="hidden" />
+                    <div class="flex items-center gap-3 border border-arcade-border rounded-xl p-4">
+                        <span class="flex-1 text-arcade-text font-medium">@option.Text</span>
+                        <button type="button" onclick="pickStmt('@option.Id', true)" id="yes_@option.Id"
+                                class="px-4 py-1 rounded-lg border border-arcade-border text-arcade-muted text-sm font-medium transition hover:border-fire hover:text-fire">
+                            Yes
+                        </button>
+                        <button type="button" onclick="pickStmt('@option.Id', false)" id="no_@option.Id"
+                                class="px-4 py-1 rounded-lg border border-arcade-border text-arcade-muted text-sm font-medium transition hover:border-fire hover:text-fire">
+                            No
+                        </button>
+                    </div>
+                }
+            </form>
+            <button type="button" id="stmt-submit" disabled
+                    hx-post="/sessions/@Model.SessionId/question/@Model.Position?handler=Answer&questionId=@Model.Question.Id"
+                    hx-include="#statement-form"
+                    hx-target="#answer-container"
+                    hx-swap="innerHTML"
+                    class="mt-4 w-full px-6 py-3 bg-gradient-to-r from-fire to-fire-hot text-slate-900 font-bold rounded-xl opacity-50 cursor-not-allowed transition">
+                Submit Answer
+            </button>
+        </div>
+        <script>
+        let _stmtAnswered = 0;
+        let _stmtTotal = @Model.AnswerOptions.Count;
+        function pickStmt(id, isYes) {
+            var yBtn = document.getElementById('yes_' + id);
+            var nBtn = document.getElementById('no_' + id);
+            var wasAnswered = yBtn.classList.contains('border-fire') || nBtn.classList.contains('border-fire');
+            if (!wasAnswered) _stmtAnswered++;
+            document.getElementById('sc_' + id).checked = isYes;
+            [yBtn, nBtn].forEach(function(b) {
+                b.classList.remove('border-fire', 'text-fire');
+                b.classList.add('border-arcade-border', 'text-arcade-muted');
+            });
+            var active = isYes ? yBtn : nBtn;
+            active.classList.add('border-fire', 'text-fire');
+            active.classList.remove('border-arcade-border', 'text-arcade-muted');
+            if (_stmtAnswered >= _stmtTotal) {
+                var sub = document.getElementById('stmt-submit');
+                sub.disabled = false;
+                sub.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+        }
+        </script>
+    }
+    else
+    {
+        var showStmtFeedback = Model.FeedbackMode == FeedbackMode.Direct;
+        <div class="space-y-3">
+            @foreach (var option in Model.AnswerOptions)
+            {
+                var userSaidYes = Model.SelectedAnswerOptionIds.Contains(option.Id);
+                var isCorrectAnswer = userSaidYes == option.IsCorrect;
+                string borderClass, bgClass, textClass;
+                if (showStmtFeedback)
+                {
+                    if (isCorrectAnswer)
+                    { borderClass = "border-green-500"; bgClass = "bg-green-500/10"; textClass = "text-green-400"; }
+                    else
+                    { borderClass = "border-red-500"; bgClass = "bg-red-500/10"; textClass = "text-red-400"; }
+                }
+                else
+                { borderClass = "border-arcade-border"; bgClass = ""; textClass = "text-arcade-text"; }
+
+                <div class="flex items-center gap-3 border @borderClass @bgClass rounded-xl p-4">
+                    @if (showStmtFeedback)
+                    {
+                        if (isCorrectAnswer) { <span class="text-green-400 flex-shrink-0">✓</span> }
+                        else { <span class="text-red-400 flex-shrink-0">✗</span> }
+                    }
+                    <span class="flex-1 @textClass font-medium">@option.Text</span>
+                    <span class="px-4 py-1 rounded-lg border @(userSaidYes ? "border-fire text-fire" : "border-arcade-border text-arcade-muted") text-sm font-medium flex-shrink-0">
+                        @(userSaidYes ? "Yes" : "No")
+                    </span>
+                </div>
+            }
+        </div>
+    }
+}
+else if (!Model.AllowMultipleAnswers)
+{
+    <div class="space-y-3">
+        @foreach (var option in Model.AnswerOptions)
+        {
+            var isSelected = Model.SelectedAnswerOptionIds.Contains(option.Id);
+            var isAnswered = Model.IsAnswered && Model.FeedbackMode == FeedbackMode.Direct;
+
+            string borderClass, bgClass, textClass;
+
+            if (isAnswered)
+            {
+                if (option.IsCorrect)
+                { borderClass = "border-green-500"; bgClass = "bg-green-500/10"; textClass = "text-green-400"; }
+                else if (isSelected)
+                { borderClass = "border-red-500"; bgClass = "bg-red-500/10"; textClass = "text-red-400"; }
+                else
+                { borderClass = "border-arcade-border"; bgClass = ""; textClass = "text-arcade-muted opacity-50"; }
+            }
+            else if (isSelected)
+            { borderClass = "border-fire"; bgClass = "bg-fire/10"; textClass = "text-fire"; }
+            else
+            { borderClass = "border-arcade-border"; bgClass = ""; textClass = "text-arcade-text"; }
+
+            @if (isAnswered)
+            {
+                <div class="border @borderClass @bgClass rounded-xl p-4 @textClass font-medium flex items-center gap-3">
+                    @if (option.IsCorrect) { <span>✓</span> }
+                    else if (isSelected) { <span>✗</span> }
+                    else { <span class="w-4"></span> }
+                    @option.Text
+                </div>
+            }
+            else
+            {
+                <button type="button"
+                    hx-post="/sessions/@Model.SessionId/question/@Model.Position?handler=Answer&questionId=@Model.Question.Id&answerIds=@option.Id"
+                    hx-target="#answer-container"
+                    hx-swap="innerHTML"
+                    class="w-full text-left border @borderClass @bgClass rounded-xl p-4 @textClass font-medium hover:border-fire hover:text-fire transition">
+                    @option.Text
+                </button>
+            }
+        }
+    </div>
+}
+else if (!Model.IsAnswered)
+{
+    <form id="multi-answer-form" class="space-y-3">
+        @foreach (var option in Model.AnswerOptions)
+        {
+            <label class="flex items-center gap-3 border border-arcade-border rounded-xl p-4 text-arcade-text font-medium cursor-pointer hover:border-fire hover:text-fire transition">
+                <input type="checkbox" name="answerIds" value="@option.Id" class="accent-yellow-500 w-4 h-4 flex-shrink-0" />
+                @option.Text
+            </label>
+        }
+    </form>
+    <button type="button"
+        hx-post="/sessions/@Model.SessionId/question/@Model.Position?handler=Answer&questionId=@Model.Question.Id"
+        hx-include="#multi-answer-form"
+        hx-target="#answer-container"
+        hx-swap="innerHTML"
+        class="mt-4 w-full px-6 py-3 bg-gradient-to-r from-fire to-fire-hot text-slate-900 font-bold rounded-xl hover:opacity-90 transition">
+        Submit Answer
+    </button>
+}
+else
+{
+    var showFeedback = Model.FeedbackMode == FeedbackMode.Direct;
+    <div class="space-y-3">
+        @foreach (var option in Model.AnswerOptions)
+        {
+            var isSelected = Model.SelectedAnswerOptionIds.Contains(option.Id);
+
+            string borderClass, bgClass, textClass;
+
+            if (showFeedback)
+            {
+                if (option.IsCorrect)
+                { borderClass = "border-green-500"; bgClass = "bg-green-500/10"; textClass = "text-green-400"; }
+                else if (isSelected)
+                { borderClass = "border-red-500"; bgClass = "bg-red-500/10"; textClass = "text-red-400"; }
+                else
+                { borderClass = "border-arcade-border"; bgClass = ""; textClass = "text-arcade-muted opacity-50"; }
+            }
+            else if (isSelected)
+            { borderClass = "border-fire"; bgClass = "bg-fire/10"; textClass = "text-fire"; }
+            else
+            { borderClass = "border-arcade-border"; bgClass = ""; textClass = "text-arcade-text"; }
+
+            <label class="flex items-center gap-3 border @borderClass @bgClass rounded-xl p-4 @textClass font-medium">
+                @if (showFeedback)
+                {
+                    if (option.IsCorrect) { <span>✓</span> }
+                    else if (isSelected) { <span>✗</span> }
+                    else { <span class="w-4"></span> }
+                }
+                <input type="checkbox" disabled @(isSelected ? "checked" : "") class="accent-yellow-500 w-4 h-4 flex-shrink-0" />
+                @option.Text
+            </label>
+        }
+    </div>
+}
+
+@if (Model.IsAnswered && Model.FeedbackMode == FeedbackMode.Direct)
+{
+    <div class="mt-6">
+        @if (Model.Position < Model.TotalQuestions)
+        {
+            <a href="/sessions/@Model.SessionId/question/@(Model.Position + 1)"
+               class="inline-block w-full text-center px-6 py-3 bg-gradient-to-r from-fire to-fire-hot text-slate-900 font-bold rounded-xl hover:opacity-90 transition">
+                Next →
+            </a>
+        }
+        else
+        {
+            <form method="post" action="/sessions/@Model.SessionId/complete">
+                <button type="submit"
+                    class="w-full px-6 py-3 bg-gradient-to-r from-fire to-fire-hot text-slate-900 font-bold rounded-xl hover:opacity-90 transition">
+                    Finish 🏁
+                </button>
+            </form>
+        }
+    </div>
+}

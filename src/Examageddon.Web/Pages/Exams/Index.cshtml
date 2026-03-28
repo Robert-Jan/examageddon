@@ -1,0 +1,38 @@
+@page
+@model Examageddon.Web.Pages.Exams.IndexModel
+@using Examageddon.Data.Enums
+@{ ViewData["Title"] = "Select Exam"; }
+
+<h1 class="text-3xl font-black mb-2">Select an Exam</h1>
+<p class="text-arcade-muted mb-8">Choose your challenge</p>
+
+@if (!Model.Exams.Any())
+{
+    <div class="bg-arcade-card border border-arcade-border rounded-xl p-8 text-center text-arcade-muted">
+        No exams yet. <a href="/manage" class="text-fire hover:underline">Create one in Manage.</a>
+    </div>
+}
+else
+{
+    <div class="grid gap-4">
+        @foreach (var exam in Model.Exams)
+        {
+            <a href="/exams/@exam.Id/setup"
+               class="bg-arcade-card border border-arcade-border rounded-xl p-6 hover:border-fire transition group flex items-center justify-between">
+                <div>
+                    <h2 class="text-xl font-bold group-hover:text-fire transition">@exam.Title</h2>
+                    @if (!string.IsNullOrEmpty(exam.Description))
+                    {
+                        <p class="text-arcade-muted text-sm mt-1">@exam.Description</p>
+                    }
+                    <div class="flex gap-4 mt-3 text-sm text-arcade-muted">
+                        <span>📋 @Model.QuestionCounts.GetValueOrDefault(exam.Id, 0) questions</span>
+                        <span>🎯 Pass at @(exam.ScoringPreset == ScoringPreset.AzureCertification ? $"{exam.PassingThreshold} / 1000" : $"{exam.PassingThreshold}%")</span>
+                        <span>📝 Exam: @exam.ExamQuestionCount q's</span>
+                    </div>
+                </div>
+                <span class="text-fire text-2xl opacity-0 group-hover:opacity-100 transition">→</span>
+            </a>
+        }
+    </div>
+}

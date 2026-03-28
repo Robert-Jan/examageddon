@@ -1,0 +1,119 @@
+@page "/sessions/{sessionId:int}/result"
+@model Examageddon.Web.Pages.Sessions.ResultModel
+@using Examageddon.Data.Enums
+@{ ViewData["Title"] = "Result"; var r = Model.Result; }
+
+<div class="text-center mb-8">
+    @if (r.IsPassed)
+    {
+        <div class="text-6xl mb-4">🏆</div>
+        <h1 class="text-4xl font-black text-green-400 mb-2">You Passed!</h1>
+    }
+    else
+    {
+        <div class="text-6xl mb-4">💀</div>
+        <h1 class="text-4xl font-black text-red-400 mb-2">Not Quite...</h1>
+    }
+    <p class="text-arcade-muted">@r.ExamTitle</p>
+</div>
+
+<div class="bg-arcade-card border border-arcade-border rounded-xl overflow-hidden mb-4">
+    <div class="px-4 py-2.5 border-b border-arcade-border">
+        <span class="text-xs font-bold tracking-widest text-arcade-muted uppercase">Score</span>
+    </div>
+    <div class="p-6">
+        <div class="grid grid-cols-3 gap-4 text-center">
+            @if (r.ScoringPreset == ScoringPreset.AzureCertification)
+            {
+                <div>
+                    <div class="text-3xl font-black @(r.IsPassed ? "text-green-400" : "text-red-400")">@r.ScaledScore / 1000</div>
+                    <div class="text-arcade-muted text-sm">Score</div>
+                </div>
+                <div>
+                    <div class="text-3xl font-black">@r.CorrectAnswers / @r.TotalQuestions</div>
+                    <div class="text-arcade-muted text-sm">Correct</div>
+                </div>
+                <div>
+                    <div class="text-3xl font-black text-fire">@r.PassingThreshold / 1000</div>
+                    <div class="text-arcade-muted text-sm">To Pass (scaled)</div>
+                </div>
+            }
+            else
+            {
+                <div>
+                    <div class="text-3xl font-black @(r.IsPassed ? "text-green-400" : "text-red-400")">@r.ScorePercent%</div>
+                    <div class="text-arcade-muted text-sm">Score</div>
+                </div>
+                <div>
+                    <div class="text-3xl font-black">@r.CorrectAnswers / @r.TotalQuestions</div>
+                    <div class="text-arcade-muted text-sm">Correct</div>
+                </div>
+                <div>
+                    <div class="text-3xl font-black text-fire">@r.PassingThreshold%</div>
+                    <div class="text-arcade-muted text-sm">To Pass</div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<div class="bg-arcade-card border border-arcade-border rounded-xl overflow-hidden mb-4">
+    <div class="px-4 py-2.5 border-b border-arcade-border">
+        <span class="text-xs font-bold tracking-widest text-arcade-muted uppercase">Your Answers</span>
+    </div>
+    <div class="divide-y divide-arcade-border">
+        @foreach (var item in r.QuestionResults)
+        {
+            <div class="flex items-start gap-3 p-4">
+                <span class="text-lg flex-shrink-0">@(item.IsCorrect ? "✅" : "❌")</span>
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-medium">@item.Question.Text</p>
+                    @if (item.Question.QuestionType == QuestionType.DragAndDrop)
+                    {
+                        @foreach (var slot in item.Question.AnswerOptions.OrderBy(a => a.OrderIndex))
+                        {
+                            var hasPlaced = item.DragPlacements.TryGetValue(slot.Id, out var placedOpt);
+                            var placedLabel = hasPlaced ? placedOpt!.MatchText ?? "" : "—";
+                            var isCorrect = hasPlaced && placedOpt!.Id == slot.Id;
+                            <p class="text-sm mt-1 @(isCorrect ? "text-green-400" : "text-red-400")">
+                                @(isCorrect ? "✓" : "✗") @placedLabel → @slot.Text
+                                @if (!isCorrect && slot.MatchText is not null)
+                                {
+                                    <span class="text-green-400"> (correct: @slot.MatchText)</span>
+                                }
+                            </p>
+                        }
+                    }
+                    else
+                    {
+                        @if (item.SelectedOptions.Count > 0)
+                        {
+                            <p class="text-sm mt-1 @(item.IsCorrect ? "text-green-400" : "text-red-400")">
+                                Your answer: @string.Join(", ", item.SelectedOptions.Select(o => o.Text))
+                            </p>
+                        }
+                        @if (!item.IsCorrect)
+                        {
+                            var correctOptions = item.Question.AnswerOptions.Where(a => a.IsCorrect).ToList();
+                            if (correctOptions.Count > 0)
+                            {
+                                <p class="text-sm text-green-400 mt-1">
+                                    Correct: @string.Join(", ", correctOptions.Select(o => o.Text))
+                                </p>
+                            }
+                        }
+                    }
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<div class="flex gap-3">
+    <a href="/exams" class="flex-1 text-center py-3 bg-arcade-card border border-arcade-border rounded-xl hover:border-arcade-muted transition text-sm">
+        ← Back to Exams
+    </a>
+    <a href="/history" class="flex-1 text-center py-3 bg-gradient-to-r from-fire to-fire-hot text-slate-900 font-bold rounded-xl hover:opacity-90 transition text-sm">
+        View History
+    </a>
+</div>

@@ -1,0 +1,421 @@
+@page "/manage/exams/{id:int}/questions/{questionId:int?}/edit"
+@model Examageddon.Web.Pages.Manage.QuestionFormModel
+@using Examageddon.Data.Enums
+@{ ViewData["Title"] = Model.EditQuestionId.HasValue ? "Edit Question" : "Add Question"; }
+
+<h1 class="text-3xl font-black mb-8">@ViewData["Title"]</h1>
+
+<form method="post" enctype="multipart/form-data" class="space-y-4">
+    <input type="hidden" asp-for="ExamId" />
+
+    <!-- Section: Question text -->
+    <div class="bg-arcade-card border border-arcade-border rounded-xl overflow-hidden">
+        <div class="px-4 py-2.5 border-b border-arcade-border">
+            <span class="text-xs font-bold tracking-widest text-arcade-muted uppercase">Question</span>
+        </div>
+        <div class="p-4">
+            <textarea asp-for="QuestionText" rows="3" required
+                class="w-full bg-arcade-dark border border-arcade-border rounded-lg px-4 py-2 text-arcade-text focus:outline-none focus:border-fire resize-y"></textarea>
+        </div>
+    </div>
+
+    <!-- Section: Question type -->
+    <div class="bg-arcade-card border border-arcade-border rounded-xl overflow-hidden">
+        <div class="px-4 py-2.5 border-b border-arcade-border">
+            <span class="text-xs font-bold tracking-widest text-arcade-muted uppercase">Question Type</span>
+        </div>
+        <div class="p-4 flex gap-3">
+            <input type="radio" name="QuestionType" id="qt-mc" value="@((int)QuestionType.MultipleChoice)"
+                   @(Model.QuestionType == QuestionType.MultipleChoice ? "checked" : "") class="hidden" />
+            <input type="radio" name="QuestionType" id="qt-stmt" value="@((int)QuestionType.Statement)"
+                   @(Model.QuestionType == QuestionType.Statement ? "checked" : "") class="hidden" />
+            <input type="radio" name="QuestionType" id="qt-dnd" value="@((int)QuestionType.DragAndDrop)"
+                   @(Model.QuestionType == QuestionType.DragAndDrop ? "checked" : "") class="hidden" />
+            @{
+                string mcCard = Model.QuestionType == QuestionType.MultipleChoice
+                    ? "border-fire text-fire" : "border-arcade-border text-arcade-muted hover:border-arcade-muted";
+                string stmtCard = Model.QuestionType == QuestionType.Statement
+                    ? "border-fire text-fire" : "border-arcade-border text-arcade-muted hover:border-arcade-muted";
+                string dndCard = Model.QuestionType == QuestionType.DragAndDrop
+                    ? "border-fire text-fire" : "border-arcade-border text-arcade-muted hover:border-arcade-muted";
+            }
+            <button type="button" id="type-card-mc"
+                    onclick="selectTypeCard('@((int)QuestionType.MultipleChoice)')"
+                    class="type-card flex-1 bg-arcade-dark rounded-lg border-2 px-3 py-3 text-center transition @mcCard">
+                <div class="text-xl mb-1">☑</div>
+                <div class="text-xs font-bold type-card-label">Multiple Choice</div>
+                <div class="text-xs text-arcade-muted mt-0.5">Select one or more</div>
+            </button>
+            <button type="button" id="type-card-stmt"
+                    onclick="selectTypeCard('@((int)QuestionType.Statement)')"
+                    class="type-card flex-1 bg-arcade-dark rounded-lg border-2 px-3 py-3 text-center transition @stmtCard">
+                <div class="text-xl mb-1">⊙</div>
+                <div class="text-xs font-bold type-card-label">Statement</div>
+                <div class="text-xs text-arcade-muted mt-0.5">True / False</div>
+            </button>
+            <button type="button" id="type-card-dnd"
+                    onclick="selectTypeCard('@((int)QuestionType.DragAndDrop)')"
+                    class="type-card flex-1 bg-arcade-dark rounded-lg border-2 px-3 py-3 text-center transition @dndCard">
+                <div class="text-xl mb-1">⇄</div>
+                <div class="text-xs font-bold type-card-label">Drag &amp; Drop</div>
+                <div class="text-xs text-arcade-muted mt-0.5">Match pairs</div>
+            </button>
+        </div>
+    </div>
+
+    <!-- Section: Scoring (MC only) -->
+    <div id="allow-multiple-section"
+         class="bg-arcade-card border border-arcade-border rounded-xl overflow-hidden @(Model.QuestionType != QuestionType.MultipleChoice ? "hidden" : "")">
+        <div class="px-4 py-2.5 border-b border-arcade-border flex items-center justify-between">
+            <span class="text-xs font-bold tracking-widest text-arcade-muted uppercase">Scoring</span>
+            <label class="flex items-center gap-2 cursor-pointer select-none">
+                <input type="checkbox" asp-for="AllowMultipleAnswers" id="AllowMultipleAnswers"
+                       class="accent-yellow-500 w-4 h-4" onchange="toggleScoringMode(this)" />
+                <span class="text-sm text-arcade-muted">Allow multiple correct answers</span>
+            </label>
+        </div>
+        <div id="scoring-mode-section" class="p-4 flex gap-3 @(Model.AllowMultipleAnswers ? "" : "hidden")">
+            <input type="radio" name="ScoringMode" id="sm-aon" value="@((int)MultiAnswerScoringMode.AllOrNothing)"
+                   @(Model.ScoringMode == MultiAnswerScoringMode.AllOrNothing ? "checked" : "") class="hidden" />
+            <input type="radio" name="ScoringMode" id="sm-pc" value="@((int)MultiAnswerScoringMode.PartialCredit)"
+                   @(Model.ScoringMode == MultiAnswerScoringMode.PartialCredit ? "checked" : "") class="hidden" />
+            @{
+                string aonCard = Model.ScoringMode == MultiAnswerScoringMode.AllOrNothing
+                    ? "border-green-600 bg-green-950" : "border-arcade-border bg-arcade-dark hover:border-arcade-muted";
+                string aonLabel = Model.ScoringMode == MultiAnswerScoringMode.AllOrNothing
+                    ? "text-green-400" : "text-arcade-muted";
+                string pcCard = Model.ScoringMode == MultiAnswerScoringMode.PartialCredit
+                    ? "border-green-600 bg-green-950" : "border-arcade-border bg-arcade-dark hover:border-arcade-muted";
+                string pcLabel = Model.ScoringMode == MultiAnswerScoringMode.PartialCredit
+                    ? "text-green-400" : "text-arcade-muted";
+            }
+            <button type="button" id="scoring-card-aon"
+                    onclick="selectScoringCard('@((int)MultiAnswerScoringMode.AllOrNothing)')"
+                    class="scoring-card flex-1 rounded-lg border-2 px-4 py-3 text-left transition @aonCard">
+                <div class="text-xs font-bold scoring-card-label mb-1 @aonLabel">All or Nothing</div>
+                <div class="text-xs text-arcade-muted">Full points only if every correct answer is selected</div>
+            </button>
+            <button type="button" id="scoring-card-pc"
+                    onclick="selectScoringCard('@((int)MultiAnswerScoringMode.PartialCredit)')"
+                    class="scoring-card flex-1 rounded-lg border-2 px-4 py-3 text-left transition @pcCard">
+                <div class="text-xs font-bold scoring-card-label mb-1 @pcLabel">Partial Credit</div>
+                <div class="text-xs text-arcade-muted">Points per correct pick, no wrong-answer penalty</div>
+            </button>
+        </div>
+    </div>
+
+    <!-- Section: Image -->
+    <div class="bg-arcade-card border border-arcade-border rounded-xl overflow-hidden">
+        <div class="px-4 py-2.5 border-b border-arcade-border">
+            <span class="text-xs font-bold tracking-widest text-arcade-muted uppercase">Image</span>
+            <span class="text-xs text-arcade-muted ml-1">(optional)</span>
+        </div>
+        <div class="p-4">
+            <input type="file" asp-for="Image" accept="image/*" id="file-input" class="hidden" onchange="previewImage(this)" />
+            @if (Model.ExistingQuestion?.ImageData != null)
+            {
+                <div id="drop-zone" onclick="document.getElementById('file-input').click()"
+                     class="border-2 border-dashed border-arcade-border rounded-lg cursor-pointer hover:border-fire transition text-center">
+                    <img src="/images/question/@Model.ExistingQuestion.Id" id="img-preview"
+                         class="rounded-lg max-h-40 object-contain mx-auto p-2" />
+                    <p id="replace-hint" class="text-xs text-arcade-muted pb-3">Click to replace</p>
+                </div>
+            }
+            else
+            {
+                <div id="drop-zone" onclick="document.getElementById('file-input').click()"
+                     class="border-2 border-dashed border-arcade-border rounded-lg p-7 text-center cursor-pointer hover:border-fire transition">
+                    <img id="img-preview" class="hidden rounded-lg max-h-40 object-contain mx-auto mb-2" />
+                    <div id="drop-zone-label">
+                        <div class="text-2xl mb-1">📎</div>
+                        <p class="text-sm text-arcade-muted">Drop image here or <span class="text-fire underline">browse</span></p>
+                        <p class="text-xs text-arcade-muted mt-1">PNG, JPG</p>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Section: Answer options / pairs -->
+    @{
+        string optionsLabel;
+        if (Model.QuestionType == QuestionType.Statement)
+            optionsLabel = "Statements";
+        else if (Model.QuestionType == QuestionType.DragAndDrop)
+            optionsLabel = "Pairs";
+        else
+            optionsLabel = "Answer Options";
+    }
+    <div class="bg-arcade-card border border-arcade-border rounded-xl overflow-hidden">
+        <div class="px-4 py-2.5 border-b border-arcade-border flex items-center justify-between">
+            <span class="text-xs font-bold tracking-widest text-arcade-muted uppercase" id="options-label">
+                @optionsLabel
+            </span>
+            <span id="mc-hint" class="text-xs text-arcade-muted @(Model.QuestionType != QuestionType.MultipleChoice ? "hidden" : "")">Check = correct</span>
+        </div>
+        <div class="p-4">
+            <div id="dnd-headers" class="grid grid-cols-[1fr_1fr_24px] gap-3 mb-2 px-0.5 @(Model.QuestionType != QuestionType.DragAndDrop ? "hidden" : "")">
+                <span class="text-xs font-bold tracking-widest text-arcade-muted uppercase">Label</span>
+                <span class="text-xs font-bold tracking-widest text-arcade-muted uppercase">Sentence</span>
+                <span></span>
+            </div>
+            <div id="options-container" class="space-y-2">
+                @for (int i = 0; i < Model.OptionTexts.Count; i++)
+                {
+                    bool isCorrect = Model.CorrectOptionIndices.Contains(i);
+                    bool isDnD = Model.QuestionType == QuestionType.DragAndDrop;
+                    bool isStmt = Model.QuestionType == QuestionType.Statement;
+                    string placeholder;
+                    if (isStmt)
+                        placeholder = $"Statement {i + 1}";
+                    else if (isDnD)
+                        placeholder = $"Sentence {i + 1}";
+                    else
+                        placeholder = $"Option {i + 1}";
+                    string rowBase = isDnD
+                        ? "option-row grid grid-cols-[1fr_1fr_24px] gap-3 items-center"
+                        : "option-row flex items-center gap-3 rounded-lg px-3 py-2 border bg-arcade-dark border-arcade-border";
+                    <div class="@rowBase">
+                        <input type="checkbox" name="CorrectOptionIndices" value="@i"
+                               @(isCorrect ? "checked" : "") class="correct-input hidden" />
+                        <button type="button" onclick="toggleCorrect(this)"
+                                class="correct-toggle mc-only @(isStmt || isDnD ? "hidden" : "") w-5 h-5 rounded flex-shrink-0 flex items-center justify-center border-2 transition @(isCorrect ? "bg-green-600 border-green-600 text-white" : "border-slate-600 bg-transparent")">
+                            <span class="correct-check text-xs font-bold @(isCorrect ? "" : "hidden")">✓</span>
+                        </button>
+                        <input type="text" name="MatchTexts[@i]"
+                               value="@(Model.MatchTexts.Count > i ? Model.MatchTexts[i] : "")"
+                               placeholder="Label @(i + 1)"
+                               class="match-text dnd-only @(isDnD ? "" : "hidden") bg-arcade-dark border border-arcade-border rounded-lg px-3 py-2 text-arcade-text placeholder-arcade-muted focus:outline-none focus:border-fire text-sm" />
+                        <input type="text" name="OptionTexts[@i]" value="@Model.OptionTexts[i]"
+                               placeholder="@placeholder"
+                               class="option-text @(isDnD ? "bg-arcade-dark border border-arcade-border rounded-lg px-3 py-2 focus:border-fire" : "flex-1 bg-transparent border-none") text-arcade-text placeholder-arcade-muted focus:outline-none text-sm" />
+                        <div class="stmt-only @(isStmt ? "" : "hidden") flex gap-1 flex-shrink-0">
+                            <button type="button" onclick="setStmtYes(this)"
+                                    class="stmt-yes px-3 py-1 text-sm rounded-lg border transition @(isCorrect ? "border-fire text-fire" : "border-arcade-border text-arcade-muted")">Yes</button>
+                            <button type="button" onclick="setStmtNo(this)"
+                                    class="stmt-no px-3 py-1 text-sm rounded-lg border transition @(!isCorrect ? "border-fire text-fire" : "border-arcade-border text-arcade-muted")">No</button>
+                        </div>
+                        <button type="button" onclick="removeOption(this)"
+                                class="text-arcade-muted hover:text-red-400 transition text-xl leading-none px-1 @(isDnD ? "" : "flex-shrink-0")">×</button>
+                    </div>
+                }
+            </div>
+            @{
+                string addOptionLabel;
+                if (Model.QuestionType == QuestionType.Statement)
+                    addOptionLabel = "+ Add statement";
+                else if (Model.QuestionType == QuestionType.DragAndDrop)
+                    addOptionLabel = "+ Add pair";
+                else
+                    addOptionLabel = "+ Add option";
+            }
+            <button id="add-option-btn" type="button" onclick="addOption()"
+                    class="mt-3 w-full px-4 py-2 text-sm border border-dashed border-arcade-border rounded-lg text-arcade-muted hover:border-fire hover:text-fire transition">
+                @addOptionLabel
+            </button>
+        </div>
+    </div>
+
+    <div asp-validation-summary="All" class="text-red-400 text-sm"></div>
+
+    <button type="submit"
+            class="w-full py-3 bg-gradient-to-r from-fire to-fire-hot text-slate-900 font-bold rounded-xl hover:opacity-90 transition text-base">
+        @(Model.EditQuestionId.HasValue ? "Save Question" : "Add Question")
+    </button>
+    <a href="/manage/exams/@Model.ExamId/questions"
+       class="block text-center py-2.5 bg-arcade-card border border-arcade-border rounded-xl hover:border-arcade-muted transition text-sm">
+        Cancel
+    </a>
+</form>
+
+@section Scripts {
+<script>
+function previewImage(input) {
+    const preview = document.getElementById('img-preview');
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = e => {
+            preview.src = e.target.result;
+            preview.classList.remove('hidden');
+            const lbl = document.getElementById('drop-zone-label');
+            if (lbl) lbl.classList.add('hidden');
+            const hint = document.getElementById('replace-hint');
+            if (hint) hint.classList.add('hidden');
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+function toggleScoringMode(checkbox) {
+    document.getElementById('scoring-mode-section').classList.toggle('hidden', !checkbox.checked);
+}
+
+function switchQuestionType(value) {
+    const isMC = value === '@((int)QuestionType.MultipleChoice)';
+    const isDnD = value === '@((int)QuestionType.DragAndDrop)';
+    const isStatement = value === '@((int)QuestionType.Statement)';
+    document.getElementById('allow-multiple-section').classList.toggle('hidden', !isMC);
+    if (isMC) {
+        document.getElementById('scoring-mode-section').classList.toggle('hidden', !document.getElementById('AllowMultipleAnswers').checked);
+    }
+    document.querySelectorAll('.mc-only').forEach(el => el.classList.toggle('hidden', !isMC));
+    document.querySelectorAll('.stmt-only').forEach(el => el.classList.toggle('hidden', !isStatement));
+    document.querySelectorAll('.dnd-only').forEach(el => el.classList.toggle('hidden', !isDnD));
+    document.getElementById('dnd-headers').classList.toggle('hidden', !isDnD);
+    document.getElementById('mc-hint').classList.toggle('hidden', !isMC);
+    document.getElementById('options-label').textContent =
+        isStatement ? 'Statements' : isDnD ? 'Pairs' : 'Answer Options';
+    document.getElementById('add-option-btn').textContent =
+        isStatement ? '+ Add statement' : isDnD ? '+ Add pair' : '+ Add option';
+    document.querySelectorAll('.option-text').forEach((el, i) => {
+        el.placeholder = isStatement ? 'Statement ' + (i + 1) : isDnD ? 'Sentence ' + (i + 1) : 'Option ' + (i + 1);
+    });
+    document.querySelectorAll('.match-text').forEach((el, i) => { el.placeholder = 'Label ' + (i + 1); });
+}
+
+function reindexOptions() {
+    const typeVal = document.querySelector('input[name="QuestionType"]:checked')?.value;
+    const isStatement = typeVal === '@((int)QuestionType.Statement)';
+    const isDnD = typeVal === '@((int)QuestionType.DragAndDrop)';
+    document.querySelectorAll('#options-container .option-row').forEach((row, i) => {
+        row.querySelector('.correct-input').value = i;
+        const text = row.querySelector('.option-text');
+        text.name = `OptionTexts[${i}]`;
+        text.placeholder = isStatement ? 'Statement ' + (i + 1) : isDnD ? 'Sentence ' + (i + 1) : 'Option ' + (i + 1);
+        const match = row.querySelector('.match-text');
+        if (match) { match.name = `MatchTexts[${i}]`; match.placeholder = 'Label ' + (i + 1); }
+    });
+}
+
+function addOption() {
+    const container = document.getElementById('options-container');
+    const i = container.querySelectorAll('.option-row').length;
+    const typeVal = document.querySelector('input[name="QuestionType"]:checked')?.value;
+    const isStatement = typeVal === '@((int)QuestionType.Statement)';
+    const isDnD = typeVal === '@((int)QuestionType.DragAndDrop)';
+    const div = document.createElement('div');
+    if (isDnD) {
+        div.className = 'option-row grid grid-cols-[1fr_1fr_24px] gap-3 items-center';
+        div.innerHTML = `
+            <input type="checkbox" name="CorrectOptionIndices" value="${i}" class="correct-input hidden" />
+            <button type="button" onclick="toggleCorrect(this)" class="correct-toggle mc-only hidden w-5 h-5 rounded flex-shrink-0 flex items-center justify-center border-2 border-slate-600 bg-transparent transition"><span class="correct-check text-xs font-bold hidden">✓</span></button>
+            <input type="text" name="MatchTexts[${i}]" placeholder="Label ${i + 1}" class="match-text dnd-only bg-arcade-dark border border-arcade-border rounded-lg px-3 py-2 text-arcade-text placeholder-arcade-muted focus:outline-none focus:border-fire text-sm" />
+            <input type="text" name="OptionTexts[${i}]" placeholder="Sentence ${i + 1}" class="option-text bg-arcade-dark border border-arcade-border rounded-lg px-3 py-2 text-arcade-text placeholder-arcade-muted focus:outline-none focus:border-fire text-sm" />
+            <div class="stmt-only hidden flex gap-1 flex-shrink-0"><button type="button" onclick="setStmtYes(this)" class="stmt-yes px-3 py-1 text-sm rounded-lg border border-arcade-border text-arcade-muted transition">Yes</button><button type="button" onclick="setStmtNo(this)" class="stmt-no px-3 py-1 text-sm rounded-lg border border-fire text-fire transition">No</button></div>
+            <button type="button" onclick="removeOption(this)" class="text-arcade-muted hover:text-red-400 transition text-xl leading-none px-1">×</button>`;
+    } else {
+        div.className = 'option-row flex items-center gap-3 rounded-lg px-3 py-2 border bg-arcade-dark border-arcade-border';
+        div.innerHTML = `
+            <input type="checkbox" name="CorrectOptionIndices" value="${i}" class="correct-input hidden" />
+            <button type="button" onclick="toggleCorrect(this)" class="correct-toggle mc-only${isStatement ? ' hidden' : ''} w-5 h-5 rounded flex-shrink-0 flex items-center justify-center border-2 border-slate-600 bg-transparent transition"><span class="correct-check text-xs font-bold hidden">✓</span></button>
+            <input type="text" name="MatchTexts[${i}]" placeholder="Label ${i + 1}" class="match-text dnd-only hidden bg-arcade-dark border border-arcade-border rounded-lg px-3 py-2 text-arcade-text placeholder-arcade-muted focus:outline-none focus:border-fire text-sm" />
+            <input type="text" name="OptionTexts[${i}]" placeholder="${isStatement ? 'Statement' : 'Option'} ${i + 1}" class="option-text flex-1 bg-transparent border-none text-arcade-text placeholder-arcade-muted focus:outline-none text-sm" />
+            <div class="stmt-only${isStatement ? '' : ' hidden'} flex gap-1 flex-shrink-0"><button type="button" onclick="setStmtYes(this)" class="stmt-yes px-3 py-1 text-sm rounded-lg border border-arcade-border text-arcade-muted transition">Yes</button><button type="button" onclick="setStmtNo(this)" class="stmt-no px-3 py-1 text-sm rounded-lg border border-fire text-fire transition">No</button></div>
+            <button type="button" onclick="removeOption(this)" class="flex-shrink-0 text-arcade-muted hover:text-red-400 transition text-xl leading-none px-1">×</button>`;
+    }
+    container.appendChild(div);
+}
+
+function removeOption(btn) { btn.closest('.option-row').remove(); reindexOptions(); }
+
+function setStmtYes(btn) {
+    const row = btn.closest('.option-row');
+    row.querySelector('.correct-input').checked = true;
+    row.querySelector('.stmt-yes').classList.add('border-fire', 'text-fire');
+    row.querySelector('.stmt-yes').classList.remove('border-arcade-border', 'text-arcade-muted');
+    row.querySelector('.stmt-no').classList.remove('border-fire', 'text-fire');
+    row.querySelector('.stmt-no').classList.add('border-arcade-border', 'text-arcade-muted');
+}
+
+function setStmtNo(btn) {
+    const row = btn.closest('.option-row');
+    row.querySelector('.correct-input').checked = false;
+    row.querySelector('.stmt-no').classList.add('border-fire', 'text-fire');
+    row.querySelector('.stmt-no').classList.remove('border-arcade-border', 'text-arcade-muted');
+    row.querySelector('.stmt-yes').classList.remove('border-fire', 'text-fire');
+    row.querySelector('.stmt-yes').classList.add('border-arcade-border', 'text-arcade-muted');
+}
+
+function selectTypeCard(value) {
+    const mcVal = '@((int)QuestionType.MultipleChoice)';
+    const stmtVal = '@((int)QuestionType.Statement)';
+    const dndVal = '@((int)QuestionType.DragAndDrop)';
+    document.querySelectorAll('input[name="QuestionType"]').forEach(r => { r.checked = (r.value === String(value)); });
+    [{ id: 'type-card-mc', val: mcVal }, { id: 'type-card-stmt', val: stmtVal }, { id: 'type-card-dnd', val: dndVal }]
+        .forEach(({ id, val }) => {
+            const card = document.getElementById(id);
+            const active = val === String(value);
+            card.classList.toggle('border-fire', active);
+            card.classList.toggle('text-fire', active);
+            card.classList.toggle('border-arcade-border', !active);
+            card.classList.toggle('text-arcade-muted', !active);
+        });
+    switchQuestionType(String(value));
+}
+
+function selectScoringCard(value) {
+    document.querySelectorAll('input[name="ScoringMode"]').forEach(r => { r.checked = (r.value === String(value)); });
+    const aonActive = value === '@((int)MultiAnswerScoringMode.AllOrNothing)';
+    [{ id: 'scoring-card-aon', active: aonActive }, { id: 'scoring-card-pc', active: !aonActive }]
+        .forEach(({ id, active }) => {
+            const card = document.getElementById(id);
+            card.classList.toggle('border-green-600', active);
+            card.classList.toggle('bg-green-950', active);
+            card.classList.toggle('border-arcade-border', !active);
+            card.classList.toggle('bg-arcade-dark', !active);
+            const lbl = card.querySelector('.scoring-card-label');
+            lbl.classList.toggle('text-green-400', active);
+            lbl.classList.toggle('text-arcade-muted', !active);
+        });
+}
+
+function toggleCorrect(btn) {
+    const row = btn.closest('.option-row');
+    const cb = row.querySelector('.correct-input');
+    const isNowCorrect = !cb.checked;
+    const allowMultiple = document.getElementById('AllowMultipleAnswers')?.checked ?? false;
+    if (isNowCorrect && !allowMultiple) {
+        document.querySelectorAll('#options-container .option-row').forEach(otherRow => {
+            if (otherRow === row) return;
+            const otherCb = otherRow.querySelector('.correct-input');
+            if (!otherCb || !otherCb.checked) return;
+            otherCb.checked = false;
+            const otherBtn = otherRow.querySelector('.correct-toggle');
+            if (otherBtn) {
+                otherBtn.classList.remove('bg-green-600', 'border-green-600', 'text-white');
+                otherBtn.classList.add('border-slate-600', 'bg-transparent');
+                const otherCheck = otherBtn.querySelector('.correct-check');
+                if (otherCheck) otherCheck.classList.add('hidden');
+            }
+        });
+    }
+    cb.checked = isNowCorrect;
+    btn.classList.toggle('bg-green-600', isNowCorrect);
+    btn.classList.toggle('border-green-600', isNowCorrect);
+    btn.classList.toggle('text-white', isNowCorrect);
+    btn.classList.toggle('border-slate-600', !isNowCorrect);
+    btn.classList.toggle('bg-transparent', !isNowCorrect);
+    const check = btn.querySelector('.correct-check');
+    if (check) check.classList.toggle('hidden', !isNowCorrect);
+}
+
+(function () {
+    const zone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('file-input');
+    if (!zone || !fileInput) return;
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('border-fire'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('border-fire'));
+    zone.addEventListener('drop', e => {
+        e.preventDefault();
+        zone.classList.remove('border-fire');
+        const file = e.dataTransfer.files[0];
+        if (file && file.type.startsWith('image/')) {
+            const dt = new DataTransfer();
+            dt.items.add(file);
+            fileInput.files = dt.files;
+            previewImage(fileInput);
+        }
+    });
+}());
+</script>
+}

@@ -1,0 +1,40 @@
+@page
+@model IndexModel
+@{ ViewData["Title"] = "Who are you?"; }
+
+<div class="text-center mb-10">
+    <h1 class="text-4xl font-black tracking-tight mb-2">⚡ Welcome to <span class="bg-gradient-to-r from-fire to-fire-hot bg-clip-text text-transparent">Examageddon</span></h1>
+    <p class="text-arcade-muted">Select your name to get started</p>
+</div>
+
+@if (Model.People.Any())
+{
+    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
+        @foreach (var person in Model.People)
+        {
+            <form method="post" asp-page-handler="Select">
+                <input type="hidden" name="name" value="@person.Name" />
+                <button type="submit"
+                    class="w-full bg-arcade-card border border-arcade-border rounded-xl p-4 text-left hover:border-fire hover:bg-slate-800 transition font-semibold">
+                    👤 @person.Name
+                </button>
+            </form>
+        }
+    </div>
+}
+
+<div class="bg-arcade-card border border-arcade-border rounded-xl overflow-hidden">
+    <div class="px-4 py-2.5 border-b border-arcade-border">
+        <span class="text-xs font-bold tracking-widest text-arcade-muted uppercase">New name</span>
+    </div>
+    <div class="p-4">
+        <form method="post" asp-page-handler="New" class="flex gap-3">
+            <input asp-for="NewName" placeholder="Enter your name..."
+                class="flex-1 bg-arcade-dark border border-arcade-border rounded-lg px-4 py-2 text-arcade-text placeholder-arcade-muted focus:outline-none focus:border-fire" />
+            <button type="submit"
+                class="bg-gradient-to-r from-fire to-fire-hot text-slate-900 font-bold px-6 py-2 rounded-lg hover:opacity-90 transition">
+                Start →
+            </button>
+        </form>
+    </div>
+</div>

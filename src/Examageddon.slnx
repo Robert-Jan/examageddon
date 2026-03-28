@@ -1,0 +1,19 @@
+<Solution>
+  <Folder Name="/Claude/">
+    <File Path="..\.claude\settings.local.json" />
+    <File Path="..\CLAUDE.md" />
+  </Folder>
+  <Folder Name="/GitHub/">
+    <File Path="..\.github\workflows\release.yml" />
+  </Folder>
+  <Folder Name="/Solution Files/">
+    <File Path="Directory.Packages.props" />
+    <File Path="Directory.Build.props" />
+    <File Path="..\Dockerfile" />
+    <File Path="..\docker-compose.yml" />
+  </Folder>
+  <Project Path="Examageddon.Data/Examageddon.Data.csproj" />
+  <Project Path="Examageddon.Services/Examageddon.Services.csproj" />
+  <Project Path="Examageddon.Tests/Examageddon.Tests.csproj" />
+  <Project Path="Examageddon.Web/Examageddon.Web.csproj" />
+</Solution>

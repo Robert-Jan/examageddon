@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] — Examageddon</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/htmx.org@2.0.0/dist/htmx.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        arcade: { dark: '#0f172a', card: '#1e293b', border: '#334155', muted: '#94a3b8', text: '#f1f5f9' },
+                        fire: { DEFAULT: '#f59e0b', hot: '#ef4444' }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="h-full bg-arcade-dark text-arcade-text font-sans">
+
+    <nav class="bg-arcade-card border-b border-arcade-border px-6 py-3 flex items-center justify-between">
+        <a href="/exams" class="text-xl font-black tracking-widest uppercase bg-gradient-to-r from-fire to-fire-hot bg-clip-text text-transparent">
+            ⚡ Examageddon
+        </a>
+        <div class="flex items-center gap-6 text-sm">
+            @if (Context.Session.GetString(SessionKeys.PersonName) is { } name)
+            {
+                <span class="text-arcade-muted">👤 <span class="text-arcade-text font-semibold">@name</span></span>
+            }
+            <a href="/history" class="text-arcade-muted hover:text-arcade-text transition">History</a>
+            <a href="/manage" class="text-arcade-muted hover:text-arcade-text transition">Manage</a>
+        </div>
+    </nav>
+
+    <main class="max-w-4xl mx-auto px-4 py-8">
+        @RenderBody()
+    </main>
+
+    @await RenderSectionAsync("Scripts", required: false)
+    @Html.AntiForgeryToken()
+    <script>
+        document.addEventListener('htmx:configRequest', function(evt) {
+            var token = document.querySelector('input[name="__RequestVerificationToken"]');
+            if (token) evt.detail.headers['RequestVerificationToken'] = token.value;
+        });
+    </script>
+</body>
+</html>

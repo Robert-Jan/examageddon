@@ -1,0 +1,99 @@
+@page "/manage/exams/{id:int}/import"
+@model Examageddon.Web.Pages.Manage.ImportModel
+@using Examageddon.Data.Enums
+@{ ViewData["Title"] = "Import Preview"; }
+
+<div class="mb-8">
+    <a href="/manage/exams/@Model.Exam.Id/questions" class="text-arcade-muted text-sm hover:text-arcade-text">← @Model.Exam.Title</a>
+    <div class="flex items-center justify-between mt-1">
+        <h1 class="text-3xl font-black">Import Preview</h1>
+        <span class="text-xs text-arcade-muted bg-arcade-card border border-arcade-border rounded-lg px-3 py-1">
+            @Model.StagedQuestions.Count question@(Model.StagedQuestions.Count == 1 ? "" : "s")
+        </span>
+    </div>
+    <p class="text-arcade-muted text-sm mt-1">Review and edit before importing. Nothing is saved until you click Import.</p>
+</div>
+
+<div class="space-y-4">
+
+    @* Staged questions list *@
+    <div class="bg-arcade-card border border-arcade-border rounded-xl overflow-hidden">
+        <div class="px-4 py-2.5 border-b border-arcade-border flex items-center justify-between">
+            <span class="text-xs font-bold tracking-widest text-arcade-muted uppercase">Questions</span>
+            <span class="text-xs text-arcade-muted">Click Edit to modify</span>
+        </div>
+        <div class="divide-y divide-arcade-border">
+            @for (int i = 0; i < Model.StagedQuestions.Count; i++)
+            {
+                var q = Model.StagedQuestions[i];
+                string typeIcon = q.QuestionType switch
+                {
+                    QuestionType.MultipleChoice => "☑",
+                    QuestionType.Statement => "⊙",
+                    QuestionType.DragAndDrop => "⇄",
+                    _ => "?"
+                };
+                string typeLabel = q.QuestionType switch
+                {
+                    QuestionType.MultipleChoice => "Multiple Choice",
+                    QuestionType.Statement => "Statement",
+                    QuestionType.DragAndDrop => "Drag & Drop",
+                    _ => ""
+                };
+                string scoring = q.ScoringMode == MultiAnswerScoringMode.PartialCredit ? "Partial Credit" : "All or Nothing";
+                string meta = q.QuestionType switch
+                {
+                    QuestionType.MultipleChoice =>
+                        $"Multiple Choice · {q.Options.Count} options" +
+                        (q.AllowMultipleAnswers
+                            ? $" · multiple correct · {scoring}"
+                            : " · single correct"),
+                    QuestionType.Statement =>
+                        $"Statement · {q.Options.Count} statement{(q.Options.Count == 1 ? "" : "s")}",
+                    QuestionType.DragAndDrop =>
+                        $"Drag & Drop · {q.Options.Count} pair{(q.Options.Count == 1 ? "" : "s")}",
+                    _ => ""
+                };
+
+                <div class="flex items-center gap-3 px-4 py-3">
+                    <span class="text-sm text-arcade-muted font-bold w-5 text-center flex-shrink-0">@(i + 1)</span>
+                    <span class="text-base flex-shrink-0" title="@typeLabel">@typeIcon</span>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium truncate">@q.Text</p>
+                        <p class="text-xs text-arcade-muted mt-0.5">@meta</p>
+                    </div>
+                    <div class="flex gap-2 flex-shrink-0">
+                        <a href="/manage/exams/@Model.Exam.Id/import/@i/edit"
+                           class="px-3 py-1 text-xs border border-arcade-border rounded-lg text-arcade-muted hover:border-fire transition bg-arcade-dark">Edit</a>
+                        <form method="post" asp-page-handler="Remove" asp-route-id="@Model.Exam.Id" asp-route-index="@i">
+                            @Html.AntiForgeryToken()
+                            <button type="submit"
+                                    class="px-3 py-1 text-xs border border-red-900 rounded-lg text-red-400 hover:border-red-500 transition bg-transparent">
+                                Remove
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    @* Confirm import *@
+    <form method="post" asp-page-handler="Confirm" asp-route-id="@Model.Exam.Id">
+        @Html.AntiForgeryToken()
+        <button type="submit"
+                class="w-full py-3 bg-gradient-to-r from-fire to-fire-hot text-slate-900 font-bold rounded-xl hover:opacity-90 transition text-base">
+            Import @Model.StagedQuestions.Count Question@(Model.StagedQuestions.Count == 1 ? "" : "s")
+        </button>
+    </form>
+
+    @* Cancel *@
+    <form method="post" asp-page-handler="Cancel" asp-route-id="@Model.Exam.Id">
+        @Html.AntiForgeryToken()
+        <button type="submit"
+                class="w-full py-2.5 bg-arcade-card border border-arcade-border rounded-xl hover:border-arcade-muted transition text-sm text-arcade-muted">
+            Cancel — back to Questions
+        </button>
+    </form>
+
+</div>

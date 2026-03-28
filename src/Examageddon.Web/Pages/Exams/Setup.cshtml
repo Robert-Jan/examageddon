@@ -1,0 +1,117 @@
+@page "/exams/{id:int}/setup"
+@model Examageddon.Web.Pages.Exams.SetupModel
+@using Examageddon.Data.Enums
+@{ ViewData["Title"] = "Setup";
+
+    string Active = "border-fire text-fire";
+    string Inactive = "border-arcade-border text-arcade-muted";
+
+    string QmAll     = Model.QuestionMode == QuestionMode.All     ? Active : Inactive;
+    string QmLimited = Model.QuestionMode == QuestionMode.Limited ? Active : Inactive;
+    string OmDefault = Model.OrderMode == OrderMode.Default       ? Active : Inactive;
+    string OmRandom  = Model.OrderMode == OrderMode.Random        ? Active : Inactive;
+    string FmDirect  = Model.FeedbackMode == FeedbackMode.Direct  ? Active : Inactive;
+    string FmAtEnd   = Model.FeedbackMode == FeedbackMode.AtEnd   ? Active : Inactive;
+}
+
+<h1 class="text-3xl font-black mb-1">@Model.Exam.Title</h1>
+<p class="text-arcade-muted mb-6">Configure your session</p>
+
+<form method="post" class="space-y-4">
+
+    @* Hidden radio inputs for model binding *@
+    <input type="radio" name="QuestionMode" id="qm-all"     value="All"     class="hidden" @(Model.QuestionMode == QuestionMode.All     ? "checked" : "") />
+    <input type="radio" name="QuestionMode" id="qm-limited" value="Limited" class="hidden" @(Model.QuestionMode == QuestionMode.Limited ? "checked" : "") />
+    <input type="radio" name="OrderMode"    id="om-default" value="Default" class="hidden" @(Model.OrderMode    == OrderMode.Default    ? "checked" : "") />
+    <input type="radio" name="OrderMode"    id="om-random"  value="Random"  class="hidden" @(Model.OrderMode    == OrderMode.Random     ? "checked" : "") />
+    <input type="radio" name="FeedbackMode" id="fm-direct"  value="Direct"  class="hidden" @(Model.FeedbackMode == FeedbackMode.Direct  ? "checked" : "") />
+    <input type="radio" name="FeedbackMode" id="fm-atend"   value="AtEnd"   class="hidden" @(Model.FeedbackMode == FeedbackMode.AtEnd   ? "checked" : "") />
+
+    @* Section: Questions *@
+    <div class="bg-arcade-card border border-arcade-border rounded-xl overflow-hidden">
+        <div class="px-4 py-2.5 border-b border-arcade-border">
+            <span class="text-xs font-bold tracking-widest text-arcade-muted uppercase">Questions</span>
+        </div>
+        <div class="p-4 flex gap-3">
+            <button type="button" id="card-qm-all" data-radio="qm-all"
+                    onclick="selectSetupCard('qm-all', ['card-qm-all','card-qm-limited'])"
+                    class="flex-1 bg-arcade-dark rounded-lg border-2 px-3 py-3 text-center transition @QmAll">
+                <div class="text-xl mb-1">≡</div>
+                <div class="text-xs font-bold">All Questions</div>
+                <div class="text-xs text-arcade-muted mt-0.5">@Model.Exam.Questions.Count questions</div>
+            </button>
+            <button type="button" id="card-qm-limited" data-radio="qm-limited"
+                    onclick="selectSetupCard('qm-limited', ['card-qm-all','card-qm-limited'])"
+                    class="flex-1 bg-arcade-dark rounded-lg border-2 px-3 py-3 text-center transition @QmLimited">
+                <div class="text-xl mb-1">✓</div>
+                <div class="text-xs font-bold">Exam Mode</div>
+                <div class="text-xs text-arcade-muted mt-0.5">@Model.Exam.ExamQuestionCount questions</div>
+            </button>
+        </div>
+    </div>
+
+    @* Section: Order *@
+    <div class="bg-arcade-card border border-arcade-border rounded-xl overflow-hidden">
+        <div class="px-4 py-2.5 border-b border-arcade-border">
+            <span class="text-xs font-bold tracking-widest text-arcade-muted uppercase">Order</span>
+        </div>
+        <div class="p-4 flex gap-3">
+            <button type="button" id="card-om-default" data-radio="om-default"
+                    onclick="selectSetupCard('om-default', ['card-om-default','card-om-random'])"
+                    class="flex-1 bg-arcade-dark rounded-lg border-2 px-3 py-3 text-center transition @OmDefault">
+                <div class="text-xl mb-1">↓</div>
+                <div class="text-xs font-bold">Fixed Order</div>
+                <div class="text-xs text-arcade-muted mt-0.5">Questions as defined</div>
+            </button>
+            <button type="button" id="card-om-random" data-radio="om-random"
+                    onclick="selectSetupCard('om-random', ['card-om-default','card-om-random'])"
+                    class="flex-1 bg-arcade-dark rounded-lg border-2 px-3 py-3 text-center transition @OmRandom">
+                <div class="text-xl mb-1">⇌</div>
+                <div class="text-xs font-bold">Randomized</div>
+                <div class="text-xs text-arcade-muted mt-0.5">Shuffled each time</div>
+            </button>
+        </div>
+    </div>
+
+    @* Section: Feedback *@
+    <div class="bg-arcade-card border border-arcade-border rounded-xl overflow-hidden">
+        <div class="px-4 py-2.5 border-b border-arcade-border">
+            <span class="text-xs font-bold tracking-widest text-arcade-muted uppercase">Feedback</span>
+        </div>
+        <div class="p-4 flex gap-3">
+            <button type="button" id="card-fm-direct" data-radio="fm-direct"
+                    onclick="selectSetupCard('fm-direct', ['card-fm-direct','card-fm-atend'])"
+                    class="flex-1 bg-arcade-dark rounded-lg border-2 px-3 py-3 text-center transition @FmDirect">
+                <div class="text-xl mb-1">⚡</div>
+                <div class="text-xs font-bold">Direct</div>
+                <div class="text-xs text-arcade-muted mt-0.5">After each question</div>
+            </button>
+            <button type="button" id="card-fm-atend" data-radio="fm-atend"
+                    onclick="selectSetupCard('fm-atend', ['card-fm-direct','card-fm-atend'])"
+                    class="flex-1 bg-arcade-dark rounded-lg border-2 px-3 py-3 text-center transition @FmAtEnd">
+                <div class="text-xl mb-1">◎</div>
+                <div class="text-xs font-bold">At the End</div>
+                <div class="text-xs text-arcade-muted mt-0.5">Review before submit</div>
+            </button>
+        </div>
+    </div>
+
+    <button type="submit"
+        class="w-full py-3 bg-gradient-to-r from-fire to-fire-hot text-slate-900 font-black rounded-xl hover:opacity-90 transition text-base">
+        Start Exam
+    </button>
+</form>
+
+<script>
+    function selectSetupCard(radioId, allCardIds) {
+        document.getElementById(radioId).checked = true;
+        allCardIds.forEach(cardId => {
+            const card = document.getElementById(cardId);
+            const active = card.dataset.radio === radioId;
+            card.classList.toggle('border-fire', active);
+            card.classList.toggle('text-fire', active);
+            card.classList.toggle('border-arcade-border', !active);
+            card.classList.toggle('text-arcade-muted', !active);
+        });
+    }
+</script>

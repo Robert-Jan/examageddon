@@ -1,0 +1,58 @@
+@page "/sessions/{sessionId:int}/review"
+@model Examageddon.Web.Pages.Sessions.ReviewModel
+@using Examageddon.Data.Enums
+@{ ViewData["Title"] = "Review Answers"; }
+
+<h1 class="text-3xl font-black mb-2">Review Your Answers</h1>
+<p class="text-arcade-muted mb-6">Check everything before you submit.</p>
+
+<div class="bg-arcade-card border border-arcade-border rounded-xl overflow-hidden mb-4">
+    <div class="px-4 py-2.5 border-b border-arcade-border flex items-center justify-between">
+        <span class="text-xs font-bold tracking-widest text-arcade-muted uppercase">Your Answers</span>
+        <span class="text-xs text-arcade-muted">Click to change</span>
+    </div>
+    <div class="divide-y divide-arcade-border">
+        @foreach (var (item, i) in Model.Result.QuestionResults.Select((q, i) => (q, i)))
+        {
+            var position = i + 1;
+            <a href="/sessions/@Model.SessionId/question/@position?fromReview=true"
+               class="flex items-center gap-4 p-4 hover:bg-arcade-dark transition">
+                <span class="text-arcade-muted text-sm w-6 text-center font-bold flex-shrink-0">@position</span>
+                <div class="flex-1 min-w-0">
+                    <p class="font-medium text-sm">@item.Question.Text</p>
+                    @if (item.Question.QuestionType == QuestionType.DragAndDrop)
+                    {
+                        @if (item.DragPlacements.Count > 0)
+                        {
+                            var summary = string.Join(", ", item.Question.AnswerOptions
+                                .Where(slot => item.DragPlacements.ContainsKey(slot.Id))
+                                .OrderBy(a => a.OrderIndex)
+                                .Select(slot => $"{item.DragPlacements[slot.Id].MatchText} → {slot.Text}"));
+                            <p class="text-fire text-sm mt-1 truncate">→ @summary</p>
+                        }
+                        else
+                        {
+                            <p class="text-red-400 text-sm mt-1">⚠ Not answered</p>
+                        }
+                    }
+                    else if (item.SelectedOptions.Count > 0)
+                    {
+                        <p class="text-fire text-sm mt-1 truncate">→ @string.Join(", ", item.SelectedOptions.Select(o => o.Text))</p>
+                    }
+                    else
+                    {
+                        <p class="text-red-400 text-sm mt-1">⚠ Not answered</p>
+                    }
+                </div>
+                <span class="text-arcade-muted text-xs flex-shrink-0">Edit →</span>
+            </a>
+        }
+    </div>
+</div>
+
+<form method="post" action="/sessions/@Model.SessionId/complete">
+    <button type="submit"
+        class="w-full py-3 bg-gradient-to-r from-fire to-fire-hot text-slate-900 font-black rounded-xl hover:opacity-90 transition text-base">
+        Submit Exam 🏁
+    </button>
+</form>

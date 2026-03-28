@@ -1,0 +1,85 @@
+@page "/manage/exams/{id:int}/edit"
+@model Examageddon.Web.Pages.Manage.ExamFormModel
+@using Examageddon.Data.Enums
+@{ ViewData["Title"] = Model.IsEdit ? "Edit Exam" : "New Exam"; }
+
+<h1 class="text-3xl font-black mb-6">@ViewData["Title"]</h1>
+
+<form method="post" class="space-y-4">
+    <input type="hidden" asp-for="Exam.Id" />
+    <input type="hidden" asp-for="Exam.ScoringPreset" id="ScoringPreset" />
+
+    @* Section: Exam details *@
+    <div class="bg-arcade-card border border-arcade-border rounded-xl overflow-hidden">
+        <div class="px-4 py-2.5 border-b border-arcade-border">
+            <span class="text-xs font-bold tracking-widest text-arcade-muted uppercase">Exam</span>
+        </div>
+        <div class="p-4 space-y-4">
+            <div>
+                <label class="block text-xs font-bold text-arcade-muted uppercase tracking-widest mb-2">Title *</label>
+                <input asp-for="Exam.Title" required
+                    class="w-full bg-arcade-dark border border-arcade-border rounded-lg px-4 py-2 text-arcade-text focus:outline-none focus:border-fire" />
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-arcade-muted uppercase tracking-widest mb-2">Description</label>
+                <textarea asp-for="Exam.Description" rows="3"
+                    class="w-full bg-arcade-dark border border-arcade-border rounded-lg px-4 py-2 text-arcade-text focus:outline-none focus:border-fire resize-y"></textarea>
+            </div>
+        </div>
+    </div>
+
+    @* Section: Settings *@
+    <div class="bg-arcade-card border border-arcade-border rounded-xl overflow-hidden">
+        <div class="px-4 py-2.5 border-b border-arcade-border">
+            <span class="text-xs font-bold tracking-widest text-arcade-muted uppercase">Settings</span>
+        </div>
+        <div class="p-4 grid grid-cols-2 gap-4">
+            <div>
+                <label class="block text-xs font-bold text-arcade-muted uppercase tracking-widest mb-2">Passing Threshold</label>
+                <input asp-for="Exam.PassingThreshold" id="PassingThreshold" type="number" min="1" max="1000" required
+                    class="w-full bg-arcade-dark border border-arcade-border rounded-lg px-4 py-2 text-arcade-text focus:outline-none focus:border-fire" />
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-arcade-muted uppercase tracking-widest mb-2">Exam Question Count</label>
+                <input asp-for="Exam.ExamQuestionCount" id="ExamQuestionCount" type="number" min="1" required
+                    class="w-full bg-arcade-dark border border-arcade-border rounded-lg px-4 py-2 text-arcade-text focus:outline-none focus:border-fire" />
+            </div>
+        </div>
+    </div>
+
+    @* Section: Scoring Preset *@
+    <div class="bg-arcade-card border border-arcade-border rounded-xl overflow-hidden">
+        <div class="px-4 py-2.5 border-b border-arcade-border flex items-center justify-between">
+            <span class="text-xs font-bold tracking-widest text-arcade-muted uppercase">Scoring Preset</span>
+            <span id="azure-badge"
+                class="@(Model.Exam.ScoringPreset == ScoringPreset.AzureCertification ? "" : "hidden") text-xs font-bold text-fire border border-fire rounded px-2 py-0.5">
+                Azure Active
+            </span>
+        </div>
+        <div class="p-4">
+            <button type="button" onclick="applyAzurePreset()"
+                class="px-4 py-2 bg-arcade-dark border border-arcade-border rounded-lg text-sm hover:border-fire transition">
+                Apply Azure Certification
+            </button>
+            <p class="text-xs text-arcade-muted mt-3">Sets passing threshold to 700 / 1000, question count to 40, and enables Azure-style partial credit scoring.</p>
+        </div>
+    </div>
+
+    <button type="submit"
+        class="w-full py-3 bg-gradient-to-r from-fire to-fire-hot text-slate-900 font-bold rounded-xl hover:opacity-90 transition text-base">
+        @(Model.IsEdit ? "Save Changes" : "Create Exam")
+    </button>
+    <a href="/manage"
+       class="block text-center py-2.5 bg-arcade-card border border-arcade-border rounded-xl hover:border-arcade-muted transition text-sm">
+        Cancel
+    </a>
+</form>
+
+<script>
+    function applyAzurePreset() {
+        document.getElementById('PassingThreshold').value = '700';
+        document.getElementById('ExamQuestionCount').value = '40';
+        document.getElementById('ScoringPreset').value = '1';
+        document.getElementById('azure-badge').classList.remove('hidden');
+    }
+</script>
